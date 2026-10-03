@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clickstack.fullname" . }}-clickhouse
+  labels:
+    {{- include "clickstack.labels" . | nindent 4 }}
+data:
+  zz-limits.xml: |
+    <clickhouse>
+        <max_server_memory_usage>{{ .Values.clickhouse.maxServerMemoryUsage }}</max_server_memory_usage>
+        <mark_cache_size>{{ .Values.clickhouse.markCacheSize }}</mark_cache_size>
+        <index_mark_cache_size>{{ .Values.clickhouse.indexMarkCacheSize }}</index_mark_cache_size>
+        <uncompressed_cache_size>{{ .Values.clickhouse.uncompressedCacheSize }}</uncompressed_cache_size>
+        <index_uncompressed_cache_size>{{ .Values.clickhouse.indexUncompressedCacheSize }}</index_uncompressed_cache_size>
+        <mmap_cache_size>{{ .Values.clickhouse.mmapCacheSize }}</mmap_cache_size>
+        <background_schedule_pool_size>{{ .Values.clickhouse.backgroundSchedulePoolSize }}</background_schedule_pool_size>
+    </clickhouse>

@@ -1,0 +1,42 @@
+image:
+  repository: apache/kafka
+  tag: "4.3.1"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 9092
+  controllerPort: 9093
+
+persistence:
+  size: 2Gi
+  storageClass: ""
+
+heapOpts: "-Xmx256m -Xms256m"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 320Mi
+  limits:
+    memory: 640Mi
+
+topics:
+  - name: ingest
+    partitions: 1
+    replicationFactor: 1
+  - name: ingest-dlq
+    partitions: 1
+    replicationFactor: 1
+
+consumerGroups:
+  - name: ingest-worker
+    topic: ingest
+    offset: earliest
+
+config:
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+  KAFKA_LOG_RETENTION_HOURS: "24"

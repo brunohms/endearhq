@@ -1,0 +1,6 @@
+apiVersion: v2
+name: simulator
+description: Posts made-up webhooks at the ingest API, so the system always has traffic.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

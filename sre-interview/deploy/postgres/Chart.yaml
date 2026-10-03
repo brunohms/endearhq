@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgres
+description: A single-node PostgreSQL on the official postgres image, for the local cluster.
+type: application
+version: 0.1.0
+appVersion: "18.6"

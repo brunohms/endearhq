@@ -1,0 +1,45 @@
+FROM node:24.21.0-bookworm-slim AS build
+WORKDIR /app
+
+COPY package.json package-lock.json turbo.json tsconfig.base.json ./
+COPY packages/db/package.json packages/db/
+COPY packages/logging/package.json packages/logging/
+COPY packages/telemetry/package.json packages/telemetry/
+COPY packages/backend/package.json packages/backend/
+COPY packages/worker/package.json packages/worker/
+COPY packages/simulator/package.json packages/simulator/
+COPY packages/frontend/package.json packages/frontend/
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm ci --no-audit --no-fund
+
+COPY . .
+ARG PACKAGE
+RUN npx turbo run build --filter=@app/db --filter=@app/logging --filter=@app/telemetry --filter=@app/${PACKAGE}...
+
+RUN npm prune --omit=dev
+
+FROM node:24.21.0-bookworm-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ARG PACKAGE
+ENV PACKAGE=${PACKAGE}
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/packages/db/dist ./packages/db/dist
+COPY --from=build /app/packages/db/package.json ./packages/db/package.json
+COPY --from=build /app/packages/logging/dist ./packages/logging/dist
+COPY --from=build /app/packages/logging/package.json ./packages/logging/package.json
+COPY --from=build /app/packages/telemetry/dist ./packages/telemetry/dist
+COPY --from=build /app/packages/telemetry/package.json ./packages/telemetry/package.json
+COPY --from=build /app/packages/db/drizzle ./packages/db/drizzle
+COPY --from=build /app/packages/${PACKAGE}/dist ./packages/${PACKAGE}/dist
+COPY --from=build /app/packages/${PACKAGE}/package.json ./packages/${PACKAGE}/package.json
+COPY --from=build /app/packages/db/drizzle ./packages/${PACKAGE}/drizzle
+
+RUN ln -s /app/packages/${PACKAGE}/dist/index.js /app/entrypoint.js
+
+USER node
+CMD ["node", "/app/entrypoint.js"]

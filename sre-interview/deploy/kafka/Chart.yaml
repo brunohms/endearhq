@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kafka
+description: A single-node Apache Kafka in KRaft mode, on the official apache/kafka image.
+type: application
+version: 0.1.0
+appVersion: "4.3.1"

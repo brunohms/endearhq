@@ -1,0 +1,8 @@
+Kafka {{ .Values.image.tag | default .Chart.AppVersion }} is starting as "{{ .Release.Name }}", single node, KRaft mode.
+
+Bootstrap server, from inside the cluster:
+  {{ include "kafka.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+Try it:
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "kafka.fullname" . }}-0 -- \
+    /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list

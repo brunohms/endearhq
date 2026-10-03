@@ -1,0 +1,17 @@
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/.terraform.tfstate.lock.info
+terraform/crash.log
+terraform/*.auto.tfvars
+terraform/override.tf
+terraform/*_override.tf
+terraform/*.tfplan
+terraform/plan.out
+
+terraform/.kubeconfig
+
+mise.local.toml
+.mise.local.toml
+
+.DS_Store

@@ -1,0 +1,14 @@
+ClickStack {{ .Values.image.tag | default .Chart.AppVersion }} is starting as "{{ .Release.Name }}".
+
+This is the local-mode image: no authentication on the UI, and its OTLP endpoint
+accepts anything that can reach it. Fine inside a throwaway kind cluster, and not a
+configuration to copy anywhere else.
+
+{{ if eq .Values.service.type "NodePort" -}}
+  UI: http://localhost:{{ .Values.service.hostPort }}   (the kind node publishes {{ .Values.service.appNodePort }} there)
+{{- else -}}
+  UI: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "clickstack.fullname" . }} 8080:{{ .Values.service.appPort }}
+{{- end }}
+
+  OTLP:       http://{{ include "clickstack.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.otlpHttpPort }}
+  ClickHouse: kubectl -n {{ .Release.Namespace }} exec -it {{ include "clickstack.fullname" . }}-0 -- clickhouse-client

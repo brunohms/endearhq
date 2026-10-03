@@ -1,0 +1,6 @@
+apiVersion: v2
+name: backend
+description: Fastify service with two APIs - reads for the frontend, webhook ingestion to Kafka.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

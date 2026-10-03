@@ -1,0 +1,6 @@
+apiVersion: v2
+name: worker
+description: Consumes the ingest topic and writes customer and order records.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

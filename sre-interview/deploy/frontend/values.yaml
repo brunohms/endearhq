@@ -1,0 +1,19 @@
+image:
+  repository: sre-interview/frontend
+  tag: dev
+  pullPolicy: Never
+
+replicaCount: 1
+
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30300
+  hostPort: 3000
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 24Mi
+  limits:
+    memory: 64Mi

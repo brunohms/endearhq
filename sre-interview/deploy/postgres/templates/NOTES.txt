@@ -1,0 +1,11 @@
+PostgreSQL {{ .Values.image.tag | default .Chart.AppVersion }} is deploying as "{{ .Release.Name }}".
+
+In-cluster connection:
+  host:     {{ include "postgres.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  port:     {{ .Values.service.port }}
+  database: {{ .Values.auth.database }}
+  user:     {{ .Values.auth.username }}
+  password: {{ .Values.auth.password }}
+
+From your laptop:
+  kubectl -n {{ .Release.Namespace }} exec -it {{ include "postgres.fullname" . }}-0 -- psql -U {{ .Values.auth.username }} -d {{ .Values.auth.database }}

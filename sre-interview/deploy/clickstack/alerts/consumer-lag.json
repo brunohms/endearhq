@@ -1,0 +1,8 @@
+{
+  "name": "Consumer group lag above 10",
+  "dashboard": "Ingest",
+  "tileId": "lag",
+  "threshold": 10,
+  "thresholdType": "above_exclusive",
+  "interval": "5m"
+}

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "simulator.fullname" . }}
+  labels:
+    {{- include "simulator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "simulator.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "simulator.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ toYaml .Values | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: simulator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: NODE_OPTIONS
+              value: {{ .Values.nodeOptions | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ include "simulator.fullname" . | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.otel.logLevel | quote }}
+            - name: INGEST_URL
+              value: {{ .Values.ingest.url | quote }}
+            - name: SIMULATOR_TIMEOUT_MS
+              value: {{ .Values.ingest.timeoutMs | quote }}
+            {{- if .Values.seed }}
+            - name: SIMULATOR_SEED
+              value: {{ .Values.seed | quote }}
+            {{- end }}
+            - name: SIMULATOR_SUMMARY_MS
+              value: {{ .Values.summaryMs | quote }}
+            - name: SIMULATOR_MAX_RECORDS
+              value: {{ .Values.maxRecords | quote }}
+            - name: SIMULATOR_CUSTOMER_SHARE
+              value: {{ .Values.data.customerShare | quote }}
+            - name: SIMULATOR_RESEND_RATE
+              value: {{ .Values.data.resendRate | quote }}
+            - name: SIMULATOR_UNLINKED_RATE
+              value: {{ .Values.data.unlinkedRate | quote }}
+            - name: SIMULATOR_ANOMALY_RATE
+              value: {{ .Values.data.anomalyRate | quote }}
+            - name: SIMULATOR_MEMORY
+              value: {{ .Values.data.memory | quote }}
+            - name: SIMULATOR_MEAN_INTERVAL_MS
+              value: {{ .Values.traffic.meanIntervalMs | quote }}
+            - name: SIMULATOR_MIN_INTERVAL_MS
+              value: {{ .Values.traffic.minIntervalMs | quote }}
+            - name: SIMULATOR_MAX_INTERVAL_MS
+              value: {{ .Values.traffic.maxIntervalMs | quote }}
+            - name: SIMULATOR_BURST_CHANCE
+              value: {{ .Values.traffic.burstChance | quote }}
+            - name: SIMULATOR_BURST_MIN
+              value: {{ .Values.traffic.burstMin | quote }}
+            - name: SIMULATOR_BURST_MAX
+              value: {{ .Values.traffic.burstMax | quote }}
+            - name: SIMULATOR_BURST_INTERVAL_MS
+              value: {{ .Values.traffic.burstIntervalMs | quote }}
+            - name: SIMULATOR_QUIET_CHANCE
+              value: {{ .Values.traffic.quietChance | quote }}
+            - name: SIMULATOR_QUIET_MIN_MS
+              value: {{ .Values.traffic.quietMinMs | quote }}
+            - name: SIMULATOR_QUIET_MAX_MS
+              value: {{ .Values.traffic.quietMaxMs | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

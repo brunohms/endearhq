@@ -1,0 +1,150 @@
+{{- $files := .Files.Glob "dashboards/*.json" }}
+{{- $alerts := .Files.Glob "alerts/*.json" }}
+{{- if or $files $alerts }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clickstack.fullname" . }}-dashboards
+  labels:
+    {{- include "clickstack.labels" . | nindent 4 }}
+data:
+{{ ($files.AsConfig) | indent 2 }}
+{{ ($alerts.AsConfig) | indent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "clickstack.fullname" . }}-dashboards
+  labels:
+    {{- include "clickstack.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        {{- include "clickstack.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: dashboards
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: WEBHOOK
+              value: {{ toJson .Values.alertWebhook | quote }}
+            - name: API
+              value: "http://{{ include "clickstack.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.appPort }}/api"
+          volumeMounts:
+            - name: provision
+              mountPath: /provision
+          command:
+            - node
+            - -e
+            - |
+              const fs = require('fs');
+              const api = process.env.API;
+
+              const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+              async function main() {
+                let sources;
+                for (let i = 0; i < 60; i++) {
+                  try {
+                    const res = await fetch(api + '/sources');
+                    if (res.ok) { sources = await res.json(); break; }
+                  } catch (e) { /* not up yet */ }
+                  await sleep(3000);
+                }
+                if (!sources) throw new Error('HyperDX API never became ready');
+
+                const metric = sources.find(s => s.kind === 'metric');
+                const trace = sources.find(s => s.kind === 'trace');
+                if (!metric || !trace) throw new Error('metric or trace source missing');
+                console.log('metric', metric.id, 'trace', trace.id, 'connection', metric.connection);
+
+                const existing = await (await fetch(api + '/dashboards')).json();
+
+                const read = f => JSON.parse(fs.readFileSync('/provision/' + f, 'utf8'));
+                const names = fs.readdirSync('/provision').filter(f => f.endsWith('.json'));
+                const boardFiles = names.filter(f => Array.isArray(read(f).tiles));
+                const alertFiles = names.filter(f => read(f).tileId);
+
+                for (const file of boardFiles) {
+                  const body = fs.readFileSync('/provision/' + file, 'utf8')
+                    .replaceAll('__METRIC_SOURCE__', metric.id)
+                    .replaceAll('__TRACE_SOURCE__', trace.id)
+                    .replaceAll('__CONNECTION__', metric.connection);
+                  const wanted = JSON.parse(body);
+
+                  for (const d of existing.filter(d => d.name === wanted.name)) {
+                    await fetch(api + '/dashboards/' + d.id, { method: 'DELETE' });
+                    console.log('removed previous', wanted.name, d.id);
+                  }
+
+                  const res = await fetch(api + '/dashboards', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body,
+                  });
+                  if (!res.ok) throw new Error(file + ': ' + res.status + ' ' + await res.text());
+                  console.log('created dashboard', wanted.name);
+                }
+
+                if (alertFiles.length === 0) return;
+
+                const wh = JSON.parse(process.env.WEBHOOK);
+                const hooks = await (await fetch(api + '/webhooks?service=' + wh.service)).json();
+                let hook = (hooks.data || hooks).find(h => h.name === wh.name);
+                if (!hook) {
+                  const made = await fetch(api + '/webhooks', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(wh),
+                  });
+                  if (!made.ok) throw new Error('webhook: ' + await made.text());
+                  hook = (await made.json()).data;
+                  console.log('created webhook', wh.name);
+                }
+
+                const boards = await (await fetch(api + '/dashboards')).json();
+                const current = await (await fetch(api + '/alerts')).json();
+
+                for (const file of alertFiles) {
+                  const a = read(file);
+                  const board = boards.find(b => b.name === a.dashboard);
+                  if (!board) throw new Error(file + ': no dashboard named ' + a.dashboard);
+
+                  for (const old of (current.data || current).filter(x => x.name === a.name)) {
+                    await fetch(api + '/alerts/' + (old.id || old._id), { method: 'DELETE' });
+                  }
+
+                  const res = await fetch(api + '/alerts', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                      name: a.name, threshold: a.threshold,
+                      thresholdType: a.thresholdType, interval: a.interval,
+                      source: 'tile', dashboardId: board.id, tileId: a.tileId,
+                      channel: { type: 'webhook', webhookId: hook._id || hook.id },
+                    }),
+                  });
+                  if (!res.ok) throw new Error(file + ': ' + res.status + ' ' + await res.text());
+                  console.log('created alert', a.name);
+                }
+              }
+              main().catch(e => { console.error(e.message); process.exit(1); });
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: provision
+          configMap:
+            name: {{ include "clickstack.fullname" . }}-dashboards
+{{- end }}

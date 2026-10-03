@@ -1,0 +1,41 @@
+image:
+  repository: clickhouse/clickstack-local
+  tag: "2.38.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  appPort: 8080
+  appNodePort: 30080
+  hostPort: 8080
+  otlpGrpcPort: 4317
+  otlpHttpPort: 4318
+  clickhousePort: 8123
+
+persistence:
+  clickhouseSize: 5Gi
+  mongodbSize: 1Gi
+  storageClass: ""
+
+clickhouse:
+  maxServerMemoryUsage: "1717986918"
+  markCacheSize: "67108864"
+  indexMarkCacheSize: "33554432"
+  uncompressedCacheSize: "0"
+  indexUncompressedCacheSize: "0"
+  mmapCacheSize: "0"
+  backgroundSchedulePoolSize: 4
+
+alertWebhook:
+  name: placeholder
+  service: generic
+  url: https://example.com/hyperdx-alerts
+
+nodeOptions: "--max-old-space-size=192"
+
+resources:
+  requests:
+    cpu: 150m
+    memory: 768Mi
+  limits:
+    memory: 3Gi

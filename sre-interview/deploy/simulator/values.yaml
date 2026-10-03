@@ -1,0 +1,48 @@
+image:
+  repository: sre-interview/simulator
+  tag: dev
+  pullPolicy: Never
+
+replicaCount: 1
+
+ingest:
+  url: http://backend.app.svc.cluster.local:3000/ingest
+  timeoutMs: 5000
+
+otel:
+  endpoint: http://clickstack.observability.svc.cluster.local:4318
+  logLevel: info
+
+seed: ""
+
+summaryMs: 30000
+
+maxRecords: 0
+
+data:
+  customerShare: 0.25
+  resendRate: 0.08
+  unlinkedRate: 0.1
+  anomalyRate: 0
+  memory: 500
+
+traffic:
+  meanIntervalMs: 2000
+  minIntervalMs: 100
+  maxIntervalMs: 15000
+  burstChance: 0.05
+  burstMin: 3
+  burstMax: 25
+  burstIntervalMs: 50
+  quietChance: 0.3
+  quietMinMs: 10000
+  quietMaxMs: 60000
+
+nodeOptions: "--max-old-space-size=96"
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 48Mi
+  limits:
+    memory: 192Mi

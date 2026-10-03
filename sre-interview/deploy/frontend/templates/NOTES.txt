@@ -1,0 +1,4 @@
+The frontend is available at http://localhost:{{ .Values.service.hostPort }}
+
+It polls /api/customers and /api/orders every few seconds, proxied by nginx to the
+backend service, so rows appear as the worker writes them.

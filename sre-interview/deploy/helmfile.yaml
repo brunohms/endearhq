@@ -1,0 +1,73 @@
+repositories:
+  - name: open-telemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+
+releases:
+  - name: clickstack
+    namespace: observability
+    createNamespace: true
+    chart: ./clickstack
+    wait: true
+    timeout: 600
+
+  - name: kafka
+    namespace: kafka
+    createNamespace: true
+    chart: ./kafka
+    wait: true
+    timeout: 300
+
+  - name: backend
+    namespace: app
+    createNamespace: true
+    chart: ./backend
+    needs:
+      - postgres/postgres
+      - kafka/kafka
+    wait: true
+    timeout: 300
+
+  - name: worker
+    namespace: app
+    createNamespace: true
+    chart: ./worker
+    needs:
+      - app/backend
+    wait: false
+    timeout: 300
+
+  - name: simulator
+    namespace: app
+    createNamespace: true
+    chart: ./simulator
+    needs:
+      - app/backend
+    wait: true
+    timeout: 300
+
+  - name: frontend
+    namespace: app
+    createNamespace: true
+    chart: ./frontend
+    wait: true
+    timeout: 300
+
+  - name: otel-collector
+    namespace: observability
+    createNamespace: true
+    chart: open-telemetry/opentelemetry-collector
+    version: 0.173.1
+    values:
+      - values/otel-collector.yaml
+    needs:
+      - observability/clickstack
+      - kafka/kafka
+    wait: true
+    timeout: 300
+
+  - name: postgres
+    namespace: postgres
+    createNamespace: true
+    chart: ./postgres
+    wait: true
+    timeout: 300

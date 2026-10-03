@@ -1,0 +1,169 @@
+{
+  "name": "Ingest",
+  "tags": [],
+  "tiles": [
+    {
+      "id": "accepted",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "name": "Webhooks accepted",
+        "displayType": "line",
+        "configType": "chart",
+        "source": "__TRACE_SOURCE__",
+        "connection": "__CONNECTION__",
+        "where": "SpanName:\"POST /ingest\"",
+        "whereLanguage": "lucene",
+        "granularity": "auto",
+        "groupBy": "",
+        "select": [
+          {
+            "aggFn": "count",
+            "valueExpression": "",
+            "aggCondition": "",
+            "aggConditionLanguage": "lucene"
+          }
+        ]
+      }
+    },
+    {
+      "id": "latency",
+      "x": 12,
+      "y": 0,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "name": "Ingest latency p95",
+        "displayType": "line",
+        "configType": "chart",
+        "source": "__TRACE_SOURCE__",
+        "connection": "__CONNECTION__",
+        "where": "SpanName:\"POST /ingest\"",
+        "whereLanguage": "lucene",
+        "granularity": "auto",
+        "groupBy": "",
+        "select": [
+          {
+            "aggFn": "quantile",
+            "valueExpression": "Duration",
+            "aggCondition": "",
+            "aggConditionLanguage": "lucene",
+            "level": 0.95
+          }
+        ]
+      }
+    },
+    {
+      "id": "processed",
+      "x": 0,
+      "y": 10,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "name": "Records processed",
+        "displayType": "line",
+        "configType": "chart",
+        "source": "__TRACE_SOURCE__",
+        "connection": "__CONNECTION__",
+        "where": "SpanName:\"ingest process\"",
+        "whereLanguage": "lucene",
+        "granularity": "auto",
+        "groupBy": "",
+        "select": [
+          {
+            "aggFn": "count",
+            "valueExpression": "",
+            "aggCondition": "",
+            "aggConditionLanguage": "lucene"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lag",
+      "x": 12,
+      "y": 10,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "name": "Consumer group lag",
+        "displayType": "line",
+        "configType": "chart",
+        "source": "__METRIC_SOURCE__",
+        "connection": "__CONNECTION__",
+        "where": "",
+        "whereLanguage": "lucene",
+        "granularity": "auto",
+        "groupBy": "Attributes['group']",
+        "select": [
+          {
+            "aggFn": "avg",
+            "metricName": "kafka.consumer_group.lag",
+            "metricType": "gauge",
+            "valueExpression": "Value",
+            "aggCondition": "",
+            "aggConditionLanguage": "lucene"
+          }
+        ]
+      }
+    },
+    {
+      "id": "offsets",
+      "x": 0,
+      "y": 20,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "name": "Topic offsets",
+        "displayType": "line",
+        "configType": "chart",
+        "source": "__METRIC_SOURCE__",
+        "connection": "__CONNECTION__",
+        "where": "",
+        "whereLanguage": "lucene",
+        "granularity": "auto",
+        "groupBy": "Attributes['topic']",
+        "select": [
+          {
+            "aggFn": "avg",
+            "metricName": "kafka.partition.current_offset",
+            "metricType": "gauge",
+            "valueExpression": "Value",
+            "aggCondition": "",
+            "aggConditionLanguage": "lucene"
+          }
+        ]
+      }
+    },
+    {
+      "id": "members",
+      "x": 12,
+      "y": 20,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "name": "Consumer group members",
+        "displayType": "line",
+        "configType": "chart",
+        "source": "__METRIC_SOURCE__",
+        "connection": "__CONNECTION__",
+        "where": "",
+        "whereLanguage": "lucene",
+        "granularity": "auto",
+        "groupBy": "Attributes['group']",
+        "select": [
+          {
+            "aggFn": "avg",
+            "metricName": "kafka.consumer_group.members",
+            "metricType": "sum",
+            "valueExpression": "Value",
+            "aggCondition": "",
+            "aggConditionLanguage": "lucene"
+          }
+        ]
+      }
+    }
+  ]
+}

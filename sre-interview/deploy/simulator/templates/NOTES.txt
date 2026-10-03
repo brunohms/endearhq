@@ -1,0 +1,16 @@
+The simulator is posting webhooks at {{ .Values.ingest.url }}, one every
+{{ div .Values.traffic.meanIntervalMs 1000 }}s or so, in bursts, with quiet gaps.
+
+Watch it:
+  kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/name=simulator -f
+
+It logs the counts every {{ div .Values.summaryMs 1000 }}s. For a line per record:
+  helm -n {{ .Release.Namespace }} upgrade {{ .Release.Name }} ./simulator --reuse-values --set otel.logLevel=debug
+
+To stop the traffic without uninstalling anything:
+  kubectl -n {{ .Release.Namespace }} scale deploy/{{ include "simulator.fullname" . }} --replicas=0
+{{- if not .Values.data.anomalyRate }}
+
+Nothing it sends is malformed. To give the ingest API's reject path and the
+worker's dead letter queue something to do, set data.anomalyRate to about 0.05.
+{{- end }}

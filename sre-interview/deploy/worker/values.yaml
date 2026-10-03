@@ -1,0 +1,32 @@
+image:
+  repository: sre-interview/worker
+  tag: dev
+  pullPolicy: Never
+
+replicaCount: 1
+
+postgres:
+  host: postgres.postgres.svc.cluster.local
+  port: 5432
+  database: app
+  username: app
+  password: password
+
+kafka:
+  brokers: kafka.kafka.svc.cluster.local:9092
+  ingestTopic: ingest
+  dlqTopic: ingest-dlq
+  groupId: ingest-worker
+
+otel:
+  endpoint: http://clickstack.observability.svc.cluster.local:4318
+  logLevel: info
+
+nodeOptions: "--max-old-space-size=128"
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    memory: 80Mi

@@ -1,0 +1,18 @@
+FROM node:24.21.0-bookworm-slim AS build
+WORKDIR /app
+
+COPY package.json package-lock.json turbo.json tsconfig.base.json ./
+COPY packages/db/package.json packages/db/
+COPY packages/logging/package.json packages/logging/
+COPY packages/backend/package.json packages/backend/
+COPY packages/worker/package.json packages/worker/
+COPY packages/frontend/package.json packages/frontend/
+RUN npm ci --no-audit --no-fund --ignore-scripts
+
+COPY . .
+RUN npm run build --workspace @app/frontend
+
+FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+COPY --from=build /app/packages/frontend/dist /usr/share/nginx/html
+COPY packages/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 8080

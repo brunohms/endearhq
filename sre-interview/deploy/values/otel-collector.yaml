@@ -1,0 +1,169 @@
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+presets:
+  kubernetesAttributes:
+    enabled: true
+
+extraVolumes:
+  - name: varlogpods
+    hostPath:
+      path: /var/log/pods
+extraVolumeMounts:
+  - name: varlogpods
+    mountPath: /var/log/pods
+    readOnly: true
+
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    memory: 192Mi
+
+config:
+  receivers:
+    filelog/postgres:
+      include:
+        - /var/log/pods/postgres_postgres-*/postgres/*.log
+      start_at: beginning
+      include_file_path: true
+      operators:
+        - type: container
+          id: strip-cri-wrapper
+
+        - type: recombine
+          id: join-multiline
+          combine_field: body
+          source_identifier: attributes["log.file.path"]
+          is_first_entry: 'body matches "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}"'
+
+        - type: regex_parser
+          id: parse-postgres
+          parse_from: body
+          on_error: send_quiet
+          regex: '(?s)^(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \S+) \[(?P<pid>\d+)\] (?:(?P<user>[^@\s]*)@(?P<database>\S+) )?(?P<level>[A-Z]+\d?):\s+(?P<message>.*)$'
+          timestamp:
+            parse_from: attributes.ts
+            layout: '%Y-%m-%d %H:%M:%S.%L %Z'
+          severity:
+            parse_from: attributes.level
+            mapping:
+              debug:
+                - DEBUG1
+                - DEBUG2
+                - DEBUG3
+                - DEBUG4
+                - DEBUG5
+              info:
+                - INFO
+                - LOG
+                - NOTICE
+                - DETAIL
+                - HINT
+                - CONTEXT
+                - STATEMENT
+              warn: WARNING
+              error: ERROR
+              fatal:
+                - FATAL
+                - PANIC
+
+        - type: move
+          id: message-to-body
+          if: '"message" in attributes'
+          from: attributes.message
+          to: body
+
+        - type: add
+          id: set-service-name
+          field: resource["service.name"]
+          value: postgres
+
+    filelog/kafka:
+      include:
+        - /var/log/pods/kafka_kafka-*/kafka/*.log
+      start_at: beginning
+      include_file_path: true
+      operators:
+        - type: container
+          id: strip-cri-wrapper
+
+        - type: recombine
+          id: join-multiline
+          combine_field: body
+          source_identifier: attributes["log.file.path"]
+          is_first_entry: 'body matches "^\\[\\d{4}-\\d{2}-\\d{2} "'
+
+        - type: regex_parser
+          id: parse-kafka
+          parse_from: body
+          on_error: send_quiet
+          regex: '(?s)^\[(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\] (?P<level>[A-Z]+)\s+(?P<message>.*?)(?: \((?P<logger>[\w.$]+)\))?\s*$'
+          timestamp:
+            parse_from: attributes.ts
+            layout: '%Y-%m-%d %H:%M:%S,%L'
+          severity:
+            parse_from: attributes.level
+            mapping:
+              debug: [DEBUG, TRACE]
+              info: INFO
+              warn: WARN
+              error: ERROR
+              fatal: FATAL
+
+        - type: move
+          id: message-to-body
+          if: '"message" in attributes'
+          from: attributes.message
+          to: body
+
+        - type: add
+          id: set-service-name
+          field: resource["service.name"]
+          value: kafka
+
+    kafka_metrics:
+      brokers:
+        - kafka.kafka.svc.cluster.local:9092
+      scrapers:
+        - brokers
+        - topics
+        - consumers
+      collection_interval: 30s
+
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_mib: 150
+      spike_limit_mib: 40
+
+    resource/kafka:
+      attributes:
+        - key: service.name
+          value: kafka
+          action: upsert
+
+  exporters:
+    otlphttp/clickstack:
+      endpoint: http://clickstack.observability.svc.cluster.local:4318
+
+  service:
+    pipelines:
+      logs:
+        receivers: [filelog/postgres, filelog/kafka]
+        processors: [memory_limiter, k8sattributes, batch]
+        exporters: [otlphttp/clickstack]
+
+      metrics:
+        receivers: [kafka_metrics]
+        processors: [memory_limiter, resource/kafka, batch]
+        exporters: [otlphttp/clickstack]
+
+      traces: null
